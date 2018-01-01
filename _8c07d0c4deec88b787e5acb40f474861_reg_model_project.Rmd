@@ -1,0 +1,190 @@
+---
+title: "Modeling and prediction for movies"
+output: 
+  html_document: 
+    fig_height: 4
+    highlight: pygments
+    theme: spacelab
+---
+
+## Setup
+
+### Load packages
+
+```{r load-packages, message = FALSE}
+library(ggplot2)
+library(dplyr)
+library(statsr)
+library(GGally)
+```
+
+### Load data
+
+
+
+```{r load-data}
+load("movies.Rdata")
+```
+
+
+
+* * *
+
+## Part 1: Data
+
+
+The dataset contains information about movies in Rotten Tomatoes and IMDB. There are 651 randomly sampled movies produced and released before 2016. There are 32 available variables.Some of these variables are only there for informational purposes and were not included in this analysis.
+
+This is an observational study and an experiment is not conducted to collect data and as such random assignment was not used. Therefore, we cannot establish causality. The study sampling is random, however, so the results are generalizable to movies produced and released before 2016 in the US. However, it will not be generalizable to all movies released in all parts of the world and since the IMDB is a website devoted to collecting movie data supplied by studios and fans It is possibe these can be sources of sampling bias in this sample. The bias is towards movies produced and released in the US and to those movies supplied by fans and studios. There isn't a convenience or systematic bias because the samples were random and consisted of movies produced and released before 2016.
+
+* * *
+
+## Part 2: Research question
+
+
+For this study we want to determine how does IMDB rating,Number of votes on IMDB and critics score relates to the audience score of a movie.
+Answering this question will help me to predict a audience satisfaction for a movie.
+
+
+* * *
+
+## Part 3: Exploratory data analysis
+
+Inorder to detrmine association between audience score and critics score and imdb_rating, the summary statistics of the valriables selected for the analysis were computed.
+
+```{r}
+summary(movies$audience_score)
+```
+
+```{r}
+summary(movies$critics_score)
+```
+```{r}
+summary(movies$imdb_rating)
+```
+```{r}
+summary(movies$imdb_num_votes)
+
+```
+
+
+The median critics score was 61 and the median audience score was 65 and that was 6.6 for IMDB rating. The audience score ranged from 11 to 97 while the critic score ranged from 1 to 100. The range for IMDB rating was 1.9 to 9.
+next we will draw some scatter plots to determine the relasionship between these variables.
+
+
+```{r}
+ggplot(data = movies, aes(x = imdb_rating, y = audience_score)) +
+  geom_jitter() +  geom_smooth(method = "lm", se = FALSE)+labs(title="Scatter plot of IMDB rating & Audience score for movies", x="IMDB Rating",y="Audience Score")
+```
+From the scatter plot we can conclude that the relationship between audience score and IMDB rating is linear. Basically they are strongly positively related.
+
+
+
+```{r}
+ggplot(data = movies, aes(x = critics_score, y = audience_score)) +
+  geom_jitter() +  geom_smooth(method = "lm", se = FALSE)+labs(title="Scatter plot of Critics score & Audience score for movies", x="Critics Score",y="Audience Score")
+```
+From the scatter plot we can conclude that the relationship between audience score and critics score is linear, moderately strong and positive.
+
+
+```{r}
+ggplot(data = movies, aes(x = imdb_num_votes, y = audience_score)) +
+  geom_jitter() +  geom_smooth(method = "lm", se = FALSE)+labs(title="Scatter plot of Number of votes on IMDB & Audience score for movies", x="Number of votes on IMDB",y="Audience Score")
+```
+It is evident that there is no linear relationship between Number of votes on IMDB and audience score.
+
+This result is helpful to answer the research question and we need to do further statistical analysis.
+
+
+We will draw a pairwise plot of some of the variables included in the dataset was also constructed.
+
+```{r}
+ggpairs(movies, columns = 13:18)
+```
+
+From this plot we can see that there is strong evidence for strong association between the Explanatory variables (critics_score and imdb_rating) and the dependent variable (audience_score).
+
+
+* * *
+
+## Part 4: Modeling
+
+Audience score and critics_score and imdb_rating were considered for the full model. Other variable were excluded from the full models because some of them are for information only and the other ones did not make sense to include in the analysis. Audience score and critics_score and imdb_rating were selected because the research question was to address if there association between audience score and critic score.
+
+A linear model was fit to determine the relationship between the audience score and critics_score and imdb_rating to answer the research question. The results are shown below.
+
+```{r}
+model_1= lm(data=movies,audience_score ~critics_score+imdb_rating)
+
+summary(model_1)
+```
+
+As expected the relationship beween these variable appear to be quite strong as shown by R-Suared value and the probability. We, however, need to check if the explanatory variables are coorelated.
+
+```{r}
+ggplot(data = movies, aes(x = critics_score, y = imdb_rating)) +
+  geom_jitter() +  geom_smooth(method = "lm", se = FALSE)
+model_2<- lm( movies$critics_score ~ movies$imdb_rating)
+summary(model_2)
+```
+
+
+As shown in the results above there is evidence that there is moderately strong relationship beween the two explanatory variables. These variables are collinear and adding more than one of these variables to the model would not add much value to the model. As a result only one variable is selected as explanatory variable and the model is reconstructed again. For model selection, we will use "Backword selection - Adjusted R-square" method.
+now we will remove one variable from the said two variables and fit the respective model. we will announce that the best model, the adjusted R-square of which is higher.
+
+
+```{r}
+model_imdb <- lm(audience_score ~ imdb_rating, data = movies)
+summary(model_imdb)
+```
+So, when we concider imdb_rating as explanntory variable, adjusted R-square is 0.7476.
+
+
+```{r}
+model_critic <- lm(audience_score ~ critics_score, data = movies)
+summary(model_critic)
+```
+
+So, when we concider critics_score as explanntory variable, adjusted R-square is 0.4952.
+
+so, we should select imdb_rating as our explanatory variable.
+```{r}
+hist(model_imdb$residuals, col="blue")
+qqnorm(model_imdb$residuals)
+qqline(model_imdb$residuals)  
+plot(model_imdb$residuals ~ model_imdb$fitted)
+```
+
+
+For model dignstics, the following conditions were checked using the plots provided above. - linear relationships between x and y - nearly normal residuals - constant variability of residuals - independence of residuals
+
+The model dignastic plots suggest a strong linear relationship as demostrated by the residual plot which shows the residuals randomly scattered around 0 showing normal distribution of residuals centered at 0. This is also confirmed by the normal proabiity plots (points falling along the linear line). Residuals vs. predicted plots show random scatter and confirm constant variability of residuals.
+
+* * *
+
+## Part 5: Prediction
+
+Here we will use our model created earlier, model_imdb to predict the audience score for a new movie, "La La Land", with IMDB rating 8.2. To do this first, we need to create a new data frame for this movie.
+```{r}
+prediction=data.frame(title ="La La Land", imdb_rating =8.2)
+```
+
+Once we create the data frame for the new movie, we can do the prediction using the predict function:
+```{r}
+predict(model_imdb,prediction)
+```
+
+Our model predicts that the audience score for La La Land to be 89.9. This apears to be a reasonable preciction. We also constructed a prediction interval around this prediction, which will provide a measure of uncertainty around the prediction as follows.
+
+```{r}
+predict(model_imdb, prediction, interval = "prediction", level = 0.95)
+```
+
+The model predicts, with 95% confidence, that the new movies, La La Land, with IMDB rating 8.2 is expected to have an audience score between 69.88 and 109.88.
+
+* * *
+
+## Part 6: Conclusion
+
+
+A statistical analysis using data from the movies dataset was conducted to determine if there is any association between audience score and IMDB ratings.The results of the analysis suggest that there is strong positive linear relationship between IMDB rating and audience score and IMDB rating is a significant predictor of audience score. This anaylysis shows that data on IMDB rating can be used to predict audience satisfaction.
